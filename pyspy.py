@@ -3,20 +3,22 @@
 import sys
 import getopt
 from libs.link_driver import Link
-from pyspy.check import check
+from pyspy.check import Check
 
 PROGRAM_NAME="pyspy"
 VERSION_NUMBER=0.1
 DEFAULT_LINK="/dev/link0"
 
 CONFIG = {
-	'root_reset' : False,
+	'root_reset' : True,
 	'root_subsys_reset' : False,
 	'C004_read' : False,
 	'C004_long_read' : False,
 	'C004_reset' : False,
 	'link_device' : DEFAULT_LINK,
-	'verbose' : False
+	'verbose' : False,
+	'vverbose' : False,
+	'device_verbose' : False,
 }
 
 def help():
@@ -34,14 +36,15 @@ def help():
 	print(" --cr      :  reset all C004s found")
 	print(" --l=<dev> :  use this link device, else %s" % DEFAULT_LINK)
 	print(" --v       :  verbose mode")
-	print(" --i       :  information - synonym for verbose mode")
+	print(" --vv      :  extra verbose mode")	
+	print(" --d 	   :  show device driver calls")
 	print(" --h       :  This help page\n")
 	print("v%s" % VERSION_NUMBER)
 
 
 def __main__():
 	try:                                
-		opts, args = getopt.getopt(sys.argv[1:], "nrlivh", ["i", "v", "r", "n", "c4", "cl", "cr", "cs", "l="])
+		opts, args = getopt.getopt(sys.argv[1:], "nrlivhd", ["vv", "d", "i", "v", "r", "n", "c4", "cl", "cr", "cs", "l="])
 	except getopt.GetoptError:
 		help()
 		sys.exit(2)
@@ -49,37 +52,44 @@ def __main__():
 	output = None
 	verbose = False
 	for o, a in opts:
-		if o == "--v":
+		if o in ["--v", "-v"]:
 			CONFIG["verbose"] = True
-		elif o == "--i":
+		elif o in ["--vv", "-vv"]:
 			CONFIG["verbose"] = True
-		elif o == "--l":
+			CONFIG["vverbose"] = True
+		elif o in ["--i", "-i"]:
+			CONFIG["verbose"] = True
+		elif o in ["--l", "-l"]:
 			CONFIG["link_device"] = a
-		elif o == "--n":
-			CONFIG["root_reset"] = True
-		elif o == "--r":
+		elif o in ["--d", "-d"]:
+			CONFIG["device_verbose"] = True
+		elif o in ["--n", "-n"]:
+			CONFIG["root_reset"] = False
+		elif o in ["--r", "-r"]:
 			CONFIG["root_subsys_reset"] = True
-		elif o == "--c4":
+		elif o in ["--c4", "-c4"]:
 			CONFIG["C004_read"] = True
-		elif o == "--cl":
+		elif o in ["--cl", "-cl"]:
 			CONFIG["C004_long_read"] = True
-		elif o == "--cr":
+		elif o in ["--cr", "-cr"]:
 			CONFIG["C004_reset"] = True
-		elif o in ("--h", "--help"):
+		elif o in ["--h", "--help", "-h", "-help"]:
 			help()
 			sys.exit()
 	
 	# Create a new Link driver
 	l = Link(CONFIG)
 	print("%s v%s" % (PROGRAM_NAME, VERSION_NUMBER))	
-	print("Attempting to open %s" % CONFIG["link_device"])
 	if l.OpenLink():
-		check(l)
+		linkchecker = Check(l)
+		linkchecker.check()
+		#linkchecker.c4()
+		#linkchecker.compare()
+		#linkchecker.display()
 	else:
 		print("Unable to continue")
 		sys.exit(2)
 		
-	print("Attempting to close %s" % CONFIG["link_device"])
 	l.CloseLink()
 	exit(0);
 	
